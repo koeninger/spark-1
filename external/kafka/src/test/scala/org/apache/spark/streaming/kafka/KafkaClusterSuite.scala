@@ -45,6 +45,9 @@ class KafkaClusterSuite extends KafkaStreamSuiteBase with BeforeAndAfterAll {
 
     val parts = kc.getPartitions(Set(topic)).right.get
     assert(parts(topicAndPartition), "didn't get partitions")
+
+    val err = kc.getPartitions(Set(topic + "BAD"))
+    assert(err.isLeft, "getPartitions for a nonexistant topic should be an error")
   }
 
   test("leader offset apis") {

@@ -32,7 +32,7 @@ import kafka.serializer.{DefaultDecoder, Decoder, StringDecoder}
 
 import org.apache.spark.api.java.function.{Function => JFunction}
 import org.apache.spark.streaming.util.WriteAheadLogUtils
-import org.apache.spark.{SparkContext, SparkException}
+import org.apache.spark.{SparkConf, SparkContext, SparkException}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
 import org.apache.spark.storage.StorageLevel
@@ -159,8 +159,12 @@ object KafkaUtils {
   /** get leaders for the given offset ranges, or throw an exception */
   private def leadersForRanges(
       kafkaParams: Map[String, String],
-      offsetRanges: Array[OffsetRange]): Map[TopicAndPartition, (String, Int)] = {
-    val kc = new KafkaCluster(kafkaParams)
+      offsetRanges: Array[OffsetRange],
+      conf: SparkConf): Map[TopicAndPartition, (String, Int)] = {
+    val kc = new KafkaCluster(
+      kafkaParams,
+      conf.getBoolean("spark.streaming.kafka.consumerCache.enabled", true)
+    )
     val topics = offsetRanges.map(o => TopicAndPartition(o.topic, o.partition)).toSet
     val leaders = kc.findLeaders(topics).fold(
       errs => throw new SparkException(errs.mkString("\n")),
@@ -191,7 +195,7 @@ object KafkaUtils {
       offsetRanges: Array[OffsetRange]
     ): RDD[(K, V)] = sc.withScope {
     val messageHandler = (mmd: MessageAndMetadata[K, V]) => (mmd.key, mmd.message)
-    val leaders = leadersForRanges(kafkaParams, offsetRanges)
+    val leaders = leadersForRanges(kafkaParams, offsetRanges, sc.getConf)
     new KafkaRDD[K, V, KD, VD, (K, V)](sc, kafkaParams, offsetRanges, leaders, messageHandler)
   }
 
@@ -226,7 +230,7 @@ object KafkaUtils {
       messageHandler: MessageAndMetadata[K, V] => R
     ): RDD[R] = sc.withScope {
     val leaderMap = if (leaders.isEmpty) {
-      leadersForRanges(kafkaParams, offsetRanges)
+      leadersForRanges(kafkaParams, offsetRanges, sc.getConf)
     } else {
       // This could be avoided by refactoring KafkaRDD.leaders and KafkaCluster to use Broker
       leaders.map {
@@ -396,7 +400,10 @@ object KafkaUtils {
       topics: Set[String]
   ): InputDStream[(K, V)] = {
     val messageHandler = (mmd: MessageAndMetadata[K, V]) => (mmd.key, mmd.message)
-    val kc = new KafkaCluster(kafkaParams)
+    val kc = new KafkaCluster(
+      kafkaParams,
+      ssc.conf.getBoolean("spark.streaming.kafka.consumerCache.enabled", true)
+    )
     val reset = kafkaParams.get("auto.offset.reset").map(_.toLowerCase)
 
     (for {

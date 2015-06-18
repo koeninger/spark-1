@@ -33,9 +33,13 @@ import org.apache.spark.SparkException
  * configuration parameters</a>.
  *   Requires "metadata.broker.list" or "bootstrap.servers" to be set with Kafka broker(s),
  *   NOT zookeeper servers, specified in host1:port1,host2:port2 form
+ * @param cacheEnabled set to true to cache connections for reuse
  */
+
 private[spark]
-class KafkaCluster(val kafkaParams: Map[String, String]) extends Serializable {
+class KafkaCluster(
+    val kafkaParams: Map[String, String],
+    val cacheEnabled: Boolean = true) extends Serializable {
   import KafkaCluster.{Err, LeaderOffset, SimpleConsumerConfig}
 
   // ConsumerConfig isn't serializable
@@ -48,9 +52,15 @@ class KafkaCluster(val kafkaParams: Map[String, String]) extends Serializable {
     _config
   }
 
-  def connect(host: String, port: Int): SimpleConsumer =
-    new SimpleConsumer(host, port, config.socketTimeoutMs,
-      config.socketReceiveBufferBytes, config.clientId)
+  def connect(host: String, port: Int): SimpleConsumer = {
+    if (cacheEnabled) {
+      CachedConsumer(host, port, config.socketTimeoutMs,
+        config.socketReceiveBufferBytes, config.clientId)
+    } else {
+      new SimpleConsumer(host, port, config.socketTimeoutMs,
+        config.socketReceiveBufferBytes, config.clientId)
+    }
+  }
 
   def connectLeader(topic: String, partition: Int): Either[Err, SimpleConsumer] =
     findLeader(topic, partition).right.map(hp => connect(hp._1, hp._2))

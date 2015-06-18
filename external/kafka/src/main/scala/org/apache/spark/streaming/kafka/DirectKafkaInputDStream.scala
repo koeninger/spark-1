@@ -71,7 +71,10 @@ class DirectKafkaInputDStream[
   protected[streaming] override val checkpointData =
     new DirectKafkaInputDStreamCheckpointData
 
-  protected val kc = new KafkaCluster(kafkaParams)
+  protected val kc = new KafkaCluster(
+    kafkaParams,
+    ssc.conf.getBoolean("spark.streaming.kafka.consumerCache.enabled", true)
+  )
 
   protected val maxMessagesPerPartition: Option[Long] = {
     val ratePerSec = context.sparkContext.getConf.getInt(

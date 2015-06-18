@@ -53,6 +53,8 @@ class KafkaRDD[
     leaders: Map[TopicAndPartition, (String, Int)],
     messageHandler: MessageAndMetadata[K, V] => R
   ) extends RDD[R](sc, Nil) with Logging with HasOffsetRanges {
+  val cacheEnabled = conf.getBoolean("spark.streaming.kafka.consumerCache.enabled", true)
+
   override def getPartitions: Array[Partition] = {
     offsetRanges.zipWithIndex.map { case (o, i) =>
         val (host, port) = leaders(TopicAndPartition(o.topic, o.partition))
@@ -102,7 +104,8 @@ class KafkaRDD[
     log.info(s"Computing topic ${part.topic}, partition ${part.partition} " +
       s"offsets ${part.fromOffset} -> ${part.untilOffset}")
 
-    val kc = new KafkaCluster(kafkaParams)
+    val kc = new KafkaCluster(kafkaParams, cacheEnabled)
+
     val keyDecoder = classTag[U].runtimeClass.getConstructor(classOf[VerifiableProperties])
       .newInstance(kc.config.props)
       .asInstanceOf[Decoder[K]]

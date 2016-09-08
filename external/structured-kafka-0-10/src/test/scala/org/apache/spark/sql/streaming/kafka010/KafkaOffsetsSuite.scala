@@ -20,6 +20,7 @@ package org.apache.spark.sql.streaming.kafka010
 import org.apache.kafka.common.TopicPartition
 
 import org.apache.spark.SparkFunSuite
+import org.apache.spark.sql.execution.streaming.LongOffset
 
 class KafkaOffsetsSuite extends SparkFunSuite {
   val tpA0 = new TopicPartition("a", 0)
@@ -71,4 +72,14 @@ class KafkaOffsetsSuite extends SparkFunSuite {
     }
   }
 
+  test("exceptions") {
+    intercept[AssertionError] {
+      KafkaOffsets(Map(tpA0 -> 1, tpA1 -> 0)).compareTo(
+        KafkaOffsets(Map(tpA0 -> 0, tpA1 -> 1)))
+    }
+    intercept[IllegalArgumentException] {
+      KafkaOffsets(Map(tpA1 -> 1)).compareTo(
+        LongOffset(23))
+    }
+  }
 }

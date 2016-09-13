@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.streaming.kafka010
+package org.apache.spark.streaming.kafka010
 
 import org.apache.kafka.common.TopicPartition
 

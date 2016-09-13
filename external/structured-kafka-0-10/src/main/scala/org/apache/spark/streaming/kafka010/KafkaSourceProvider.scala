@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.streaming.kafka010
+package org.apache.spark.streaming.kafka010
+
+import org.apache.kafka.common.serialization.StringDeserializer
 
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.sql.execution.streaming.Source
@@ -28,9 +30,22 @@ class KafkaSourceProvider extends StreamSourceProvider {
     metadataPath: String,
     schema: Option[StructType],
     providerName: String,
-    parameters: Map[String,String]
+    parameters: Map[String, String]
   ): Source = {
-    new KafkaSource(sqlContext)
+    // TODO  Map[String, String] as lowest common denominator for config is fugly, better way?
+    val kafkaParams: Map[String, Object] = parameters.collect {
+      case ("key.deserializer", x) => ("key.deserializer", Class.forName(x))
+      case ("value.deserializer", x) => ("value.deserializer", Class.forName(x))
+      case (k, v) if k.contains(".") && !k.startsWith("spark") => (k, v)
+    }
+    // Comma is not valid in topic, so use it as delimiter, see kafka.common.Topic
+    val topics = parameters("Subscribe").split(",")
+    // TODO how to get appropriate types, strategies, deserializers
+    new KafkaSource[String, String](
+      sqlContext,
+      PreferConsistent,
+      ConsumerStrategies.Subscribe(topics, kafkaParams)
+    )
   }
 
   def sourceSchema(

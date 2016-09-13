@@ -44,11 +44,6 @@ import org.apache.spark.streaming.scheduler.rate.RateEstimator
  * per second that each '''partition''' will accept.
  * @param locationStrategy In most cases, pass in [[PreferConsistent]],
  *   see [[LocationStrategy]] for more details.
- * @param executorKafkaParams Kafka
- * <a href="http://kafka.apache.org/documentation.html#newconsumerconfigs">
- * configuration parameters</a>.
- *   Requires  "bootstrap.servers" to be set with Kafka broker(s),
- *   NOT zookeeper servers, specified in host1:port1,host2:port2 form.
  * @param consumerStrategy In most cases, pass in [[Subscribe]],
  *   see [[ConsumerStrategy]] for more details
  * @tparam K type of Kafka message key
@@ -56,57 +51,15 @@ import org.apache.spark.streaming.scheduler.rate.RateEstimator
  */
 private[spark] class DirectKafkaInputDStream[K, V](
     _ssc: StreamingContext,
-    locationStrategy: LocationStrategy,
-    consumerStrategy: ConsumerStrategy[K, V]
-  ) extends InputDStream[ConsumerRecord[K, V]](_ssc) with Logging with CanCommitOffsets {
-
-  val executorKafkaParams = {
-    val ekp = new ju.HashMap[String, Object](consumerStrategy.executorKafkaParams)
-    KafkaUtils.fixKafkaParams(ekp)
-    ekp
-  }
-
-  protected var currentOffsets = Map[TopicPartition, Long]()
-
-  @transient private var kc: Consumer[K, V] = null
-  def consumer(): Consumer[K, V] = this.synchronized {
-    if (null == kc) {
-      kc = consumerStrategy.onStart(currentOffsets.mapValues(l => new java.lang.Long(l)).asJava)
-    }
-    kc
-  }
+    val locationStrategy: LocationStrategy,
+    val consumerStrategy: ConsumerStrategy[K, V]
+) extends InputDStream[ConsumerRecord[K, V]](_ssc) with
+    Logging with CanCommitOffsets with DriverConsumer[K, V] {
 
   override def persist(newLevel: StorageLevel): DStream[ConsumerRecord[K, V]] = {
     logError("Kafka ConsumerRecord is not serializable. " +
       "Use .map to extract fields before calling .persist or .window")
     super.persist(newLevel)
-  }
-
-  protected def getBrokers = {
-    val c = consumer
-    val result = new ju.HashMap[TopicPartition, String]()
-    val hosts = new ju.HashMap[TopicPartition, String]()
-    val assignments = c.assignment().iterator()
-    while (assignments.hasNext()) {
-      val tp: TopicPartition = assignments.next()
-      if (null == hosts.get(tp)) {
-        val infos = c.partitionsFor(tp.topic).iterator()
-        while (infos.hasNext()) {
-          val i = infos.next()
-          hosts.put(new TopicPartition(i.topic(), i.partition()), i.leader.host())
-        }
-      }
-      result.put(tp, hosts.get(tp))
-    }
-    result
-  }
-
-  protected def getPreferredHosts: ju.Map[TopicPartition, String] = {
-    locationStrategy match {
-      case PreferBrokers => getBrokers
-      case PreferConsistent => ju.Collections.emptyMap[TopicPartition, String]()
-      case PreferFixed(hostMap) => hostMap
-    }
   }
 
   // Keep this consistent with how other streams are named (e.g. "Flume polling stream [2]")
@@ -159,25 +112,6 @@ private[spark] class DirectKafkaInputDStream[K, V](
     } else {
       None
     }
-  }
-
-  /**
-   * Returns the latest (highest) available offsets, taking new partitions into account.
-   */
-  protected def latestOffsets(): Map[TopicPartition, Long] = {
-    val c = consumer
-    c.poll(0)
-    val parts = c.assignment().asScala
-
-    // make sure new partitions are reflected in currentOffsets
-    val newPartitions = parts.diff(currentOffsets.keySet)
-    // position for new partitions determined by auto.offset.reset if no commit
-    currentOffsets = currentOffsets ++ newPartitions.map(tp => tp -> c.position(tp)).toMap
-    // don't want to consume messages, so pause
-    c.pause(newPartitions.asJava)
-    // find latest available offsets
-    c.seekToEnd(currentOffsets.keySet.asJava)
-    parts.map(tp => tp -> c.position(tp)).toMap
   }
 
   // limits the maximum number of messages per partition
@@ -235,9 +169,7 @@ private[spark] class DirectKafkaInputDStream[K, V](
   }
 
   override def stop(): Unit = this.synchronized {
-    if (kc != null) {
-      kc.close()
-    }
+    stopConsumer()
   }
 
   protected val commitQueue = new ConcurrentLinkedQueue[OffsetRange]

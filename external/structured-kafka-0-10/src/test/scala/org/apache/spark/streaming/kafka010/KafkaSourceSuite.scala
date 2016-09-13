@@ -15,9 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.streaming.kafka010
+package org.apache.spark.streaming.kafka010
 
 import scala.concurrent.duration._
+import scala.util.Random
+
+import org.apache.kafka.common.serialization.StringDeserializer
 
 import org.apache.spark.sql.streaming.{ ProcessingTime, StreamTest }
 
@@ -25,8 +28,15 @@ class KafkaSourceSuite extends StreamTest {
   import testImplicits._
 
   test("bogus") {
-    val lines = spark.readStream.format("org.apache.spark.sql.streaming.kafka010.KafkaSourceProvider").load()
-    val query = lines.writeStream.outputMode("append").format("console").trigger(ProcessingTime(5.seconds)).start()
+    val lines = spark.readStream.format("org.apache.spark.streaming.kafka010.KafkaSourceProvider")
+      .option("Subscribe", "someTopic,test")
+      .option("bootstrap.servers", "localhost:9092")
+      .option("key.deserializer", classOf[StringDeserializer].getName)
+      .option("value.deserializer", classOf[StringDeserializer].getName)
+      .option("group.id", s"test-consumer-${Random.nextInt}-${System.currentTimeMillis}")
+      .load()
+    val query = lines.writeStream.outputMode("append").format("console")
+      .trigger(ProcessingTime(5.seconds)).start()
 
     query.awaitTermination()
   }

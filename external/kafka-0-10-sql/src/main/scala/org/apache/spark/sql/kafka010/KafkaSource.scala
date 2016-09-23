@@ -170,7 +170,20 @@ private[kafka010] case class KafkaSource(
         logDebug("\tSeeked to the end")
       }
       logTrace("Getting positions")
-      val partitionToOffsets = partitions.asScala.map(p => p -> consumer.position(p))
+      val partitionToOffsets = partitions.asScala.flatMap { p =>
+        try {
+          Some(p -> consumer.position(p))
+        } catch {
+          // NPE when topic has been recently deleted, should probably be a PR to Kafka project
+          case x: NullPointerException =>
+            logError(s"Couldn't get position for $p, was it deleted?", x)
+            None
+          // can only check position for partitions assigned to consumer
+          case x: IllegalArgumentException =>
+            logError(s"Couldn't get position for $p, was it deleted?", x)
+            None
+        }
+      }
       logDebug(s"Got positions $partitionToOffsets")
       partitionToOffsets.toMap
     }
@@ -258,40 +271,6 @@ private[kafka010] object KafkaSource {
 /** An [[Offset]] for the [[KafkaSource]]. */
 private[kafka010]
 case class KafkaSourceOffset(partitionToOffsets: Map[TopicPartition, Long]) extends Offset {
-  /**
-   * Returns a negative integer, zero, or a positive integer as this object is less than, equal to,
-   * or greater than the specified object.
-   */
-  override def compareTo(other: Offset): Int = other match {
-    case KafkaSourceOffset(otherOffsets) =>
-      val allTopicAndPartitions = (this.partitionToOffsets.keySet ++ otherOffsets.keySet).toSeq
-
-      val comparisons = allTopicAndPartitions.map { tp =>
-        (this.partitionToOffsets.get(tp), otherOffsets.get(tp)) match {
-          case (Some(a), Some(b)) =>
-            if (a < b) {
-              -1
-            } else if (a > b) {
-              1
-            } else {
-              0
-            }
-          case (None, _) => -1
-          case (_, None) => 1
-        }
-      }
-      val nonZeroSigns = comparisons.filter { _ != 0 }.toSet
-      nonZeroSigns.size match {
-        case 0 => 0 // if both empty or only 0s
-        case 1 => nonZeroSigns.head // if there are only (0s and 1s) or (0s and -1s)
-        case _ => // there are both 1s and -1s
-          throw new IllegalArgumentException(
-            s"Invalid comparison between non-linear histories: $this <=> $other")
-      }
-
-    case _ =>
-      throw new IllegalArgumentException(s"Cannot compare $this <=> $other")
-  }
 
   override def toString(): String = {
     partitionToOffsets.toSeq.sortBy(_._1.toString).mkString("[", ", ", "]")

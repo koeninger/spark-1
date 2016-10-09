@@ -29,8 +29,8 @@ You can participate in [current SIPs](http://SOME-LINK-TO-A-JIRA-FILTER) or see 
 
 ### Template for an SIP
 * Background: What problem is this solving?
-* Goals: What must this allow people to do, that they can't currently?
-* Rejected Goals: What shouldn't this allow?
+* Goals: What must this allow users to do, that they can't currently?
+* Non-Goals: What shouldn't this allow?
 * Strategy: How are the goals going to be accomplished? Give sufficient technical detail to allow a contributor to judge whether it's likely to be feasible. This is not a full design document. If it's discussing specifics of new internal classes or methods, it's likely too detailed.
 * Rejected Strategies: What alternatives were considered? Why were they rejected?  If no alternatives have been considered, the problem needs more thought.
 
@@ -38,7 +38,7 @@ You can participate in [current SIPs](http://SOME-LINK-TO-A-JIRA-FILTER) or see 
 All discussion of an SIP must take place in a public forum, preferably the discussion attached to the Jira.
 
 ### Acceptance of an SIP
-In order to provide a clear outcome, once a committer believes discussion has run its course, s/he can call for a vote by [majority approval](https://www.apache.org/foundation/glossary.html#MajorityApproval). Changing goals or rejected goals after an SIP has been approved requires another vote. Changing specific implementation details after approval does not require another vote, provided that goals are met.
+In order to provide a clear outcome, once a committer believes discussion has run its course, s/he can call for a vote by [majority approval](https://www.apache.org/foundation/glossary.html#MajorityApproval). Changing goals or non-goals after an SIP has been approved requires another vote. Changing specific implementation details after approval does not require another vote, provided that goals are met.
 
 ### Implementation of an SIP
 Implementation should take place after acceptance, via the [standard process for code changes](https://cwiki.apache.org/confluence/display/SPARK/Contributing+to+Spark#ContributingtoSpark-PreparingtoContributeCodeChanges)

@@ -37,11 +37,11 @@ Any user may [propose an SIP](http://SOME-LINK-TO-A-JIRA-SUBMISSION-FOR-SIPS), s
 * Strategy: How are the goals going to be accomplished? Give sufficient technical detail to allow a contributor to judge whether it's likely to be feasible. This is not a full design document.
 * Rejected Strategies: What alternatives were considered? Why were they rejected?  If no alternatives have been considered, the problem needs more thought.
 
-### Discussion of an SIP
+### Discussing an SIP
 All discussion of an SIP must take place in a public forum, preferably the discussion attached to the Jira.
 
 ### Approving an SIP
 In order to provide a clear outcome, once a committer believes discussion has run its course, s/he can call for a vote. Votes must run for at least 72 hours. Three committer +1 votes are required to pass, any committer vetos kill the proposal until they are withdrawn. Changing goals or non-goals after an SIP has been approved requires another vote. Changing specific implementation details after approval does not require another vote, provided that goals are met.
 
-### Implementation of an SIP
+### Implementing an SIP
 Implementation should take place after acceptance, via the [standard process for code changes](https://cwiki.apache.org/confluence/display/SPARK/Contributing+to+Spark#ContributingtoSpark-PreparingtoContributeCodeChanges)

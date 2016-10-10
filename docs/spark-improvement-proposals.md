@@ -21,11 +21,14 @@ You can participate in [current SIPs](http://SOME-LINK-TO-A-JIRA-FILTER) or see 
 
 ## Who?
 
-* Users can help by discussing whether an SIP is likely to meet their needs, and by suggesting topics for future SIPs.
+* Users can help by discussing whether an SIP is likely to meet their needs, and by proposing SIPs.
 * Contributors can help by discussing whether an SIP is likely to be technically feasible.
-* Committers can help by discussing whether an SIP aligns with long-term project goals, and by formally proposing and accepting SIPs.
+* Committers can help by discussing whether an SIP aligns with long-term project goals, and by formally approving SIPs.
 
 ## How?
+
+### Proposing an SIP
+Any user may [propose an SIP](http://SOME-LINK-TO-A-JIRA-SUBMISSION-FOR-SIPS), see the template below.  Please only submit an SIP if you are willing to help, at least with discussion.
 
 ### Template for an SIP
 * Background: What problem is this solving?
@@ -37,8 +40,8 @@ You can participate in [current SIPs](http://SOME-LINK-TO-A-JIRA-FILTER) or see 
 ### Discussion of an SIP
 All discussion of an SIP must take place in a public forum, preferably the discussion attached to the Jira.
 
-### Acceptance of an SIP
-In order to provide a clear outcome, once a committer believes discussion has run its course, s/he can call for a vote by [majority approval](https://www.apache.org/foundation/glossary.html#MajorityApproval). Changing goals or non-goals after an SIP has been approved requires another vote. Changing specific implementation details after approval does not require another vote, provided that goals are met.
+### Approving an SIP
+In order to provide a clear outcome, once a committer believes discussion has run its course, s/he can call for a vote. Votes must run for at least 72 hours. Three committer +1 votes are required to pass, any committer vetos kill the proposal until they are withdrawn. Changing goals or non-goals after an SIP has been approved requires another vote. Changing specific implementation details after approval does not require another vote, provided that goals are met.
 
 ### Implementation of an SIP
 Implementation should take place after acceptance, via the [standard process for code changes](https://cwiki.apache.org/confluence/display/SPARK/Contributing+to+Spark#ContributingtoSpark-PreparingtoContributeCodeChanges)

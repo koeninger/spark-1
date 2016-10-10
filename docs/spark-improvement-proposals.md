@@ -31,7 +31,7 @@ You can participate in [current SIPs](http://SOME-LINK-TO-A-JIRA-FILTER) or see 
 * Background: What problem is this solving?
 * Goals: What must this allow users to do, that they can't currently?
 * Non-Goals: What shouldn't this allow?
-* Strategy: How are the goals going to be accomplished? Give sufficient technical detail to allow a contributor to judge whether it's likely to be feasible. This is not a full design document. If it's discussing specifics of new internal classes or methods, it's likely too detailed.
+* Strategy: How are the goals going to be accomplished? Give sufficient technical detail to allow a contributor to judge whether it's likely to be feasible. This is not a full design document.
 * Rejected Strategies: What alternatives were considered? Why were they rejected?  If no alternatives have been considered, the problem needs more thought.
 
 ### Discussion of an SIP

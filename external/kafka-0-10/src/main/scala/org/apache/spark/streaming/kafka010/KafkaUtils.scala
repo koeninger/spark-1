@@ -19,6 +19,8 @@ package org.apache.spark.streaming.kafka010
 
 import java.{ util => ju }
 
+import scala.collection.JavaConverters._
+
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.TopicPartition
 
@@ -174,6 +176,25 @@ object KafkaUtils extends Logging {
     if (null == rbb || rbb.asInstanceOf[java.lang.Integer] < 65536) {
       logWarning(s"overriding ${ConsumerConfig.RECEIVE_BUFFER_CONFIG} to 65536 see KAFKA-3135")
       kafkaParams.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, 65536: java.lang.Integer)
+    }
+  }
+
+  /**
+   * The concern here is that poll might consume messages despite being paused,
+   * which would throw off consumer position.  Fix position if this happens.
+   */
+  private[kafka010] def paranoidPoll[K, V](c: Consumer[K, V]): Unit = {
+    val msgs = c.poll(0)
+    if (!msgs.isEmpty) {
+      // position should be minimum offset per topicpartition
+      msgs.asScala.foldLeft(Map[TopicPartition, Long]()) { (acc, m) =>
+        val tp = new TopicPartition(m.topic, m.partition)
+        val off = acc.get(tp).map(o => Math.min(o, m.offset)).getOrElse(m.offset)
+        acc + (tp -> off)
+      }.foreach { case (tp, off) =>
+          logInfo(s"poll(0) returned messages, seeking $tp to $off to compensate")
+          c.seek(tp, off)
+      }
     }
   }
 }

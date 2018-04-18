@@ -29,13 +29,17 @@ import scala.util.Random
 
 import kafka.admin.AdminUtils
 import kafka.api.Request
-import kafka.common.TopicAndPartition
-import kafka.server.{KafkaConfig, KafkaServer, OffsetCheckpoint}
+import kafka.server.{KafkaConfig, KafkaServer}
+import kafka.server.checkpoints.OffsetCheckpointFile
 import kafka.utils.ZkUtils
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer._
+import org.apache.kafka.common.errors.TopicExistsException
+import org.apache.kafka.common.network.ListenerName
+import org.apache.kafka.common.protocol.SecurityProtocol
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.{StringDeserializer, StringSerializer}
+import org.apache.kafka.common.errors.TopicExistsException
 import org.apache.zookeeper.server.{NIOServerCnxnFactory, ZooKeeperServer}
 import org.scalatest.concurrent.Eventually._
 import org.scalatest.time.SpanSugar._
@@ -113,7 +117,7 @@ class KafkaTestUtils(withBrokerProps: Map[String, Object] = Map.empty) extends L
       brokerConf = new KafkaConfig(brokerConfiguration, doLog = false)
       server = new KafkaServer(brokerConf)
       server.startup()
-      brokerPort = server.boundPort()
+      brokerPort = server.boundPort(ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT))
       (server, brokerPort)
     }, new SparkConf(), "KafkaBroker")
 
@@ -162,7 +166,7 @@ class KafkaTestUtils(withBrokerProps: Map[String, Object] = Map.empty) extends L
         AdminUtils.createTopic(zkUtils, topic, partitions, 1)
         created = true
       } catch {
-        case e: kafka.common.TopicExistsException if overwrite => deleteTopic(topic)
+        case e: TopicExistsException if overwrite => deleteTopic(topic)
       }
     }
     // wait until metadata is propagated
@@ -310,7 +314,7 @@ class KafkaTestUtils(withBrokerProps: Map[String, Object] = Map.empty) extends L
       topic: String,
       numPartitions: Int,
       servers: Seq[KafkaServer]): Unit = {
-    val topicAndPartitions = (0 until numPartitions).map(TopicAndPartition(topic, _))
+    val topicAndPartitions = (0 until numPartitions).map(new TopicPartition(topic, _))
 
     import ZkUtils._
     // wait until admin path for delete topic is deleted, signaling completion of topic deletion
@@ -320,7 +324,7 @@ class KafkaTestUtils(withBrokerProps: Map[String, Object] = Map.empty) extends L
     assert(!zkUtils.pathExists(getTopicPath(topic)), s"${getTopicPath(topic)} still exists")
     // ensure that the topic-partition has been deleted from all brokers' replica managers
     assert(servers.forall(server => topicAndPartitions.forall(tp =>
-      server.replicaManager.getPartition(tp.topic, tp.partition) == None)),
+      server.replicaManager.getPartition(tp) == None)),
       s"topic $topic still exists in the replica manager")
     // ensure that logs from all replicas are deleted if delete topic is marked successful
     assert(servers.forall(server => topicAndPartitions.forall(tp =>
@@ -329,7 +333,7 @@ class KafkaTestUtils(withBrokerProps: Map[String, Object] = Map.empty) extends L
     // ensure that topic is removed from all cleaner offsets
     assert(servers.forall(server => topicAndPartitions.forall { tp =>
       val checkpoints = server.getLogManager().logDirs.map { logDir =>
-        new OffsetCheckpoint(new File(logDir, "cleaner-offset-checkpoint")).read()
+        new OffsetCheckpointFile(new File(logDir, "cleaner-offset-checkpoint")).read()
       }
       checkpoints.forall(checkpointsPerLogDir => !checkpointsPerLogDir.contains(tp))
     }), s"checkpoint for topic $topic still exists")
